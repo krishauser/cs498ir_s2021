@@ -11,4 +11,10 @@ cd Klampt-jupyter-extension
 make install-user
 cd ..
 
+git clone --depth 1 https://github.com/krishauser/Klampt
+cd Klampt/Python
+python patch_a_pip_install.py
+cd ..
+rm -r Klampt
+
 git clone https://github.com/krishauser/RoboticSystemsBook.git
