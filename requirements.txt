@@ -20,5 +20,7 @@ opencv-python             # for ML projects
 klampt==0.8.5
 ipywidgets
 PyOpenGL
+svgwrite                  # via svgpathtools
+svgpathtools
 jupyter_contrib_nbextensions
 nbgitpuller
