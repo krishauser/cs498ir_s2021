@@ -11,7 +11,9 @@ class GripperInfo:
 
     - center should be set to middle of the vacuum at a "tight" seal.
     - primary_axis should be set to the outward direction from the vacuum.
-    - opening_span should be set to the diameter of the vacuum seal
+    - maximum_span should be set to the outer diameter of the vacuum seal
+    - minimum_span should be set to the minimum diameter of an object that
+      a seal can form around
     - finger_length should be set to the amount the vacuum should lower from 
       an offset away from the object (the length of the vacuum seal)
 
@@ -27,7 +29,8 @@ class GripperInfo:
     - finger_width should be set to the width of the fingers.
     - finger_depth should be set to the thickness of the fingers along
       secondary_axis
-    - opening_span should be set to the fingers' maximum separation.
+    - maximum_span should be set to the fingers' maximum separation.
+    - minimum_span should be set to the fingers' minimum separation.
 
     For a multi-finger gripper, these elements are less important, but can
     help with general heuristics.
@@ -39,12 +42,13 @@ class GripperInfo:
     - finger_length should be set to approximately the length of each finger.
     - finger_width should be set to approximately the width of each finger.
     - finger_depth should be set to approximately the thickness of each finger.
-    - opening_span should be set to the width of the largest object grippable.
+    - maximum_span should be set to the width of the largest object grippable.
+    - minimum_span should be set to the width of the smallest object grippable.
 
     Attributes:
         name (str): the gripper name
         base_link (int): the index of the gripper's base
-        finger_links (list of int): the indices of the gripper's fingers.
+        finger_links (list of int): the moving indices of the gripper's fingers.
         finger_drivers (list of int): the driver indices of the gripper's
             fingers. Can also be a list of list of ints if each finger joint
             can be individually actuated.
@@ -59,11 +63,14 @@ class GripperInfo:
             of the fingers opening and closing
         finger_length,finger_width,finger_depth (float, optional): dimensions
             of the fingers.
-        opening_span (float, optional): the maximum opening span of the gripper.
+        maximum_span (float, optional): the maximum opening span of the gripper.
+        minimum_span (float, optional): the minimum opening span of the gripper.
         closed_config (list of floats, optional): the "logical closed" gripper
             finger config.
         open_config (list of floats, optional): the "logical open" gripper
             finger config.
+        gripper_links (list of int): the list of all links attached to the
+            gripper, including non-actuated ones.
         klampt_model (str, optional): the Klamp't .rob or .urdf model to which
             this refers to.  Note: this is not necessarily a model of just 
             gripper.  Suggest creating a GripperInfo with name
@@ -80,7 +87,6 @@ class GripperInfo:
     @staticmethod
     def get(name):
         return GripperInfo.all_grippers.get(name,None)
-
 
     @staticmethod
     def mounted(gripper,klampt_model,base_link,name=None,
@@ -121,8 +127,10 @@ class GripperInfo:
         
 
     def __init__(self,name,base_link,finger_links=None,finger_drivers=None,
-                    type=None,center=None,primary_axis=None,secondary_axis=None,finger_length=None,finger_width=None,finger_depth=None,opening_span=None,
+                    type=None,center=None,primary_axis=None,secondary_axis=None,finger_length=None,finger_width=None,finger_depth=None,
+                    maximum_span=None,minimum_span=None,
                     closed_config=None,open_config=None,
+                    gripper_links=None,
                     klampt_model=None,
                     register=True):
         self.name = name
@@ -136,9 +144,11 @@ class GripperInfo:
         self.finger_length = finger_length
         self.finger_width = finger_width
         self.finger_depth = finger_depth
-        self.opening_span = opening_span
+        self.maximum_span = maximum_span
+        self.minimum_span = minimum_span
         self.closed_config = closed_config 
         self.open_config = open_config
+        self.gripper_links = gripper_links
         self.klampt_model = klampt_model
         if register:
             GripperInfo.register(self)
@@ -194,29 +204,55 @@ class GripperInfo:
             return SubRobotModel(robot,[self.base_link] + self.descendant_links(robot))
         return SubRobotModel(robot,[self.base_link]+list(self.finger_links))
 
-    def get_geometry(self,robot,qfinger=None):
+    def get_geometry(self,robot,qfinger=None,type='Group'):
         """Returns a Geometry of the gripper frozen at its configuration.
         If qfinger = None, the current configuration is used.  Otherwise,
         qfinger is a finger configuration.
+        
+        type can be 'Group' (most general and fastest) or 'TriangleMesh'
+        (compatible with Jupyter notebook visualizer.)
         """
         if qfinger is not None:
             q0 = robot.getConfig()
             robot.setConfig(self.set_finger_config(q0,qfinger))
         res = Geometry3D()
-        res.setGroup()
-        Tbase = robot.link(self.base_link).getTransform()
-        for i,link in enumerate([self.base_link] + self.descendant_links(robot)):
-            Trel = se3.mul(se3.inv(Tbase),robot.link(link).getTransform())
-            g = robot.link(link).geometry().clone()
-            if not g.empty():
-                g.setCurrentTransform(*se3.identity())
-                g.transform(*Trel)
-            else:
-                print("Uh... link",robot.link(link).getName(),"has empty geometry?")
-            res.setElement(i,g)
-        if qfinger is not None:
-            robot.setConfig(q0)
-        return res
+        gripper_links = self.gripper_links if self.gripper_links is not None else [self.base_link] + self.descendant_links(robot)
+        if type == 'Group':
+            res.setGroup()
+            Tbase = robot.link(self.base_link).getTransform()
+            for i,link in enumerate(gripper_links):
+                Trel = se3.mul(se3.inv(Tbase),robot.link(link).getTransform())
+                g = robot.link(link).geometry().clone()
+                if not g.empty():
+                    g.setCurrentTransform(*se3.identity())
+                    g.transform(*Trel)
+                else:
+                    print("Uh... link",robot.link(link).getName(),"has empty geometry?")
+                res.setElement(i,g)
+            if qfinger is not None:
+                robot.setConfig(q0)
+            return res
+        else:
+            import numpy as np
+            from klampt.io import numpy_convert
+            #merge the gripper parts into a static geometry
+            verts = []
+            tris = []
+            nverts = 0
+            for i,link in enumerate(gripper_links):
+                xform,(iverts,itris) = numpy_convert.to_numpy(robot.link(link).geometry())
+                verts.append(np.dot(np.hstack((iverts,np.ones((len(iverts),1)))),xform.T)[:,:3])
+                tris.append(itris+nverts)
+                nverts += len(iverts)
+            verts = np.vstack(verts)
+            tris = np.vstack(tris)
+            for t in tris:
+                assert all(v >= 0 and v < len(verts) for v in t)
+            mesh = numpy_convert.from_numpy((verts,tris),'TriangleMesh')
+            res.setTriangleMesh(mesh)
+            if qfinger is not None:
+                robot.setConfig(q0)
+            return res
 
     def add_to_vis(self,robot=None,animate=True):
         """Adds the gripper to the klampt.vis scene."""
@@ -279,14 +315,14 @@ class GripperInfo:
             line.milestones = [se3.apply(base_xform,m) for m in line.milestones]
             vis.add(prefix+"_primary",line,color=(1,0,0,1))
         if self.secondary_axis is not None:
-            width = 0.1 if self.opening_span is None else self.opening_span
+            width = 0.1 if self.maximum_span is None else self.maximum_span
             line = Trajectory([0,1],[vectorops.madd(outer_point,self.secondary_axis,-0.5*width),vectorops.madd(outer_point,self.secondary_axis,0.5*width)])
             line.milestones = [se3.apply(base_xform,m) for m in line.milestones]
             vis.add(prefix+"_secondary",line,color=(0,1,0,1))
-        elif self.opening_span is not None:
+        elif self.maximum_span is not None:
             #assume vacuum gripper?
             p = GeometricPrimitive()
-            p.setSphere(outer_point,self.opening_span)
+            p.setSphere(outer_point,self.maximum_span)
             g = Geometry3D()
             g.set(p)
             vis.add(prefix+"_opening",g,color=(0,1,0,0.25))
@@ -306,6 +342,6 @@ class GripperInfo:
             vis.remove(prefix+"_primary")
         if self.secondary_axis is not None:
             vis.remove(prefix+"_secondary")
-        elif self.opening_span is not None:
+        elif self.maximum_span is not None:
             vis.remove(prefix+"_opening")
         
