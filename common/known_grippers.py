@@ -18,7 +18,8 @@ robotiq_85.secondary_axis = (1,0,0)
 robotiq_85.finger_length = 0.06
 robotiq_85.finger_depth = 0.01
 robotiq_85.finger_width = 0.02
-robotiq_85.opening_span = 0.085 - 0.01
+robotiq_85.maximum_span = 0.085 - 0.01
+robotiq_85.minimum_span = 0
 robotiq_85.open_config = [0]*8
 robotiq_85.closed_config = [0.723,0,0.723,-0.723,-0.723,0.723,-0.723,0 ]
 
@@ -30,7 +31,8 @@ robotiq_140.secondary_axis = (0,1,0)
 robotiq_140.finger_length = 0.12
 robotiq_140.finger_depth = 0.01
 robotiq_140.finger_width = 0.02
-robotiq_140.opening_span = 0.140 - 0.01
+robotiq_140.maximum_span = 0.140 - 0.01
+robotiq_140.minimum_span = 0
 robotiq_140.open_config = [0]*6
 robotiq_140.closed_config = [0.7,0.7,0.7,0.7,0.7,0.7]
 
