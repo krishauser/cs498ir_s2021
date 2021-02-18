@@ -39,7 +39,11 @@ def svg_import_trajectories(fn,scale='auto',center=False,dims=3,
         want_attributes = True, this also returns a list of dicts giving attributes
         parsed from the SVG file that can be given to the vis module.
     """
-    from svgpathtools import svg2paths
+    try:
+        from svgpathtools import svg2paths
+    except ImportError:
+        print('Need the svgpathtools package. Try "python -m pip install svgpathtools".')
+        raise
     from klampt.model.collide import bb_create,bb_union
     paths, attributes = svg2paths(fn)
     trajs = []
@@ -173,6 +177,7 @@ def svg_path_to_trajectory(p):
     return HermiteTrajectory(times,milestones)
 
 def svg_path_to_polygon(p,dt=0.1):
+    """Produces a Klampt polygon geometry from an SVG Path."""
     traj = svg_path_to_trajectory(p)
     if isinstance(traj,HermiteTrajectory):
         traj = traj.discretize(dt)
