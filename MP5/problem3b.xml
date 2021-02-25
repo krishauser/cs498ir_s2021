@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<world>
+  <robot name="Kinova" file="../data/robots/kinova_with_robotiq_85.urdf" translation="0.0 0 0.6"/>
+  <!-- the pedestal -->
+  <terrain file="../data/terrains/cube.off" scale="0.3 0.3 0.59" translation="-0.15 -0.15 0.0">
+     <display color="0.2 0.2 0.2"/>
+  </terrain>
+  <rigidObject name="048_hammer" translation="0.5 0 0.64" rotateZ="0.6" >
+    <geometry file="../data/objects/ycb-select/048_hammer/textured.obj" />
+    <physics mass="1" automass="1" automassSurfaceFraction="0" />
+  </rigidObject>
+  <rigidObject name="011_banana" translation="0.7 0.3 0.64" rotateZ="2.4" >
+    <geometry file="../data/objects/ycb-select/011_banana/textured.obj" />
+    <physics mass="1" automass="1" automassSurfaceFraction="0" />
+  </rigidObject>
+  <rigidObject name="003_cracker_box" translation="0.6 -0.2 0.64" rotateZ="0.5" >
+    <geometry file="../data/objects/ycb-select/003_cracker_box/textured.obj" />
+    <physics mass="1" automass="1" automassSurfaceFraction="0.2" />
+  </rigidObject>
+  <terrain name="floor" file="../data/terrains/plane.env"/>
+  <!-- table -->
+  <terrain file="../data/terrains/cube.off" scale="0.05 0.05 0.6" translation="0.4 0.25 0.01">
+     <display color="0.4 0.3 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.05 0.05 0.6" translation="0.4 -0.25 0.01">
+     <display color="0.4 0.3 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.05 0.05 0.6" translation="0.9 0.25 0.01">
+     <display color="0.4 0.3 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.05 0.05 0.6" translation="0.9 -0.25 0.01">
+     <display color="0.4 0.3 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.6 0.6 0.02" translation="0.375 -0.275 0.615">
+     <display color="0.4 0.3 0.2"/>
+  </terrain>
+  <!-- box -->
+  <terrain file="../data/terrains/cube.off" scale="0.6 0.4 0.4" translation="-0.1 -0.7 0.0">
+     <display color="0.3 0.6 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.6 0.02 0.1" translation="-0.1 -0.7 0.4">
+     <display color="0.3 0.6 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.6 0.02 0.1" translation="-0.1 -0.32 0.4">
+     <display color="0.3 0.6 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.02 0.4 0.1" translation="-0.1 -0.7 0.4">
+     <display color="0.3 0.6 0.2"/>
+  </terrain>
+  <terrain file="../data/terrains/cube.off" scale="0.02 0.4 0.1" translation="0.48 -0.7 0.4">
+     <display color="0.3 0.6 0.2"/>
+  </terrain>
+</world>

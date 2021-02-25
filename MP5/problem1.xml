@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<world>
+  <robot name="Kinova" file="../data/robots/kinova_with_robotiq_85.urdf" translation="0 0 0.95"/>
+  <terrain name="floor" file="../data/terrains/plane.env"/>
+  <terrain name="pod" file="../data/objects/apc_pod.stl" rotateRPY="1.5708 0 1.5708" translation="0.7 -0.2 0.01">
+    <display color="0.3 0.3 0.3" texture="noise" />
+  </terrain>
+</world>
