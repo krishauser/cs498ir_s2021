@@ -1,7 +1,10 @@
 from gripper import GripperInfo
 from klampt.model import contact
 from klampt.model import ik
+from klampt.model.contact import ContactPoint
 from klampt import io
+from klampt import IKObjective
+from klampt.math import se3
 import copy
 
 class Grasp:
@@ -13,6 +16,10 @@ class Grasp:
         self.finger_links = finger_links if finger_links is not None else []
         self.finger_config = finger_config if finger_config is not None else []
         self.contacts = contacts if contacts is not None else []
+        if ik_constraint is not None:
+            assert isinstance(ik_constraint,IKObjective)
+        for c in self.contacts:
+            assert isinstance(c,ContactPoint)
         self.score = score
     
     def __str__(self):
@@ -56,11 +63,20 @@ class Grasp:
         """Returns a copy of self, transformed by xform.
         """
         obj = self.ik_constraint.copy()
-        obj.transform(xform)
+        obj.transform(*xform)
         world_contacts = [copy.copy(c) for c in self.contacts]
         for c in world_contacts:
             c.transform(xform)
         return Grasp(obj,self.finger_links,self.finger_config,world_contacts,self.score)
+
+    def sample_fixed_grasp(self,Tref=None):
+        """For non-fixed grasps, samples a Grasp with a fully specified base transform."""
+        if Tref is None:
+            Tref = se3.identity()
+        Tfixed = self.ik_constraint.closestMatch(*Tref)
+        ik2 = self.ik_constraint.copy()
+        ik2.setFixedTransform(self.ik_constraint.link(),*Tfixed)
+        return Grasp(ik2,self.finger_links,self.finger_config,self.contacts,self.score)
 
     def transfer(self,gripper_source,gripper_dest):
         """Creates a copy of this Grasp so that it can be used for another
@@ -75,7 +91,7 @@ class Grasp:
             raise ValueError("Invalid gripper destination? finger_links doens't match")
         obj = self.ik_constraint.copy()
         obj.setLinks(gripper_dest.base_link,obj.destLink())
-        return Grasp(obj,gripper_dest.finger_links,self.finger_config,self.score)
+        return Grasp(obj,gripper_dest.finger_links,self.finger_config,self.contacts,self.score)
 
     def toJson(self):
         """Returns a JSON-compatible object storing all of the grasp data."""
@@ -90,11 +106,11 @@ class Grasp:
         self.finger_config = jsonObj['finger_config']
         self.score = jsonObj.get('score',0)
 
-    def add_to_vis(self,prefix):
+    def add_to_vis(self,prefix,hide_label=True):
         from klampt import vis
-        vis.add(prefix+"_ik",self.ik_constraint)
+        vis.add(prefix+"_ik",self.ik_constraint,hide_label=hide_label)
         for i,c in enumerate(self.contacts):
-            vis.add(prefix+"_c"+str(i),c)
+            vis.add(prefix+"_c"+str(i),c,hide_label=hide_label)
 
     def remove_from_vis(self,prefix):
         from klampt import vis

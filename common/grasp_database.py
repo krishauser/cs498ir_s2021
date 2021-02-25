@@ -6,6 +6,18 @@ from klampt.model import contact
 from klampt import io
 import copy
 import json
+import os
+
+
+def _object_name(obj):
+    if isinstance(obj,str):
+        return obj
+    elif hasattr(obj,'name'):
+        return obj.name
+    elif hasattr(obj,'getName'):
+        return obj.getName()
+    else:
+        raise ValueError("Can't determine name of object {}".format(obj))
 
 
 class GraspDatabase:
@@ -52,7 +64,34 @@ class GraspDatabase:
             json.dump(jsonobj,f)
         return True
 
+    def loadfolder(self,fn):
+        """Reads from a folder containing object folders, each of which contains
+        some set of grasp json files."""
+        for obj in os.listdir(fn):
+            print(obj)
+            if os.path.isdir(os.path.join(fn,obj)):
+                inobjs = False
+                for gfn in os.listdir(os.path.join(fn,obj)):
+                    if gfn.endswith('.json') and self.gripper.name in gfn:
+                        if not inobjs:
+                            if obj not in self.objects:
+                                self.objects.append(obj)
+                                self.object_to_grasps[obj] = []
+                            inobjs = True
+                            print("Loading grasps for object",obj,"...")
+                        with open(os.path.join(fn,obj,gfn),'r') as f:
+                            jsonobj = json.load(f)
+                        try:
+                            gparsed = Grasp(None)
+                            gparsed.fromJson(jsonobj)
+                            self.object_to_grasps[obj].append(gparsed)
+                        except Exception as e:
+                            print("Unable to load",os.path.join(fn,obj,gfn),"as a Grasp")
+                            raise
+
     def add_object(self,name):
+        if name in self.objects:
+            raise ValueError("Object {} already exists".format(name))
         self.objects.append(name)
         self.object_to_grasps[name] = []
 
@@ -61,9 +100,10 @@ class GraspDatabase:
         given object.
         """
         if isinstance(grasp,Grasp):
-            if object not in self.object_to_grasps:
-            self.add_object(name)
-            self.object_to_grasps[object].append(grasp)
+            oname = _object_name(object)
+            if oname not in self.object_to_grasps:
+                self.add_object(oname)
+            self.object_to_grasps[oname].append(grasp)
         else:
             raise ValueError("grasp needs to be a Grasp")
 
@@ -97,9 +137,10 @@ class GraspDatabaseSampler(GraspSamplerBase):
         object_source to object_target.  Otherwise, return None.
 
         Default implementation: determine whether the name of
-        object_source matches object_target.name exactly.
+        object_source matches object_target.name or object_target.getName()
+        exactly.
         """
-        if object_source != object_target.name:
+        if object_source != _object_name(object_target):
             return se3.identity()
         return None
 
@@ -109,9 +150,9 @@ class GraspDatabaseSampler(GraspSamplerBase):
     def init(self,scene,object,hints):
         """Checks for either an exact match or if object_match(o,object)
         exists"""
-        if object.name in self._object_to_grasps:
+        if _object_name(object) in self._object_to_grasps:
             self._target_object = object
-            self._matching_object = object.name
+            self._matching_object = _object_name(object)
             self._matching_xform = se3.identity()
             self._grasp_index = 0
             return True
@@ -147,4 +188,108 @@ class GraspDatabaseSampler(GraspSamplerBase):
             return 0
         return 1.0 - self._grasp_index/float(len(grasps))
 
-    
+
+if __name__ == '__main__':
+    import sys
+    from klampt import WorldModel
+    from klampt import vis
+    if len(sys.argv) < 2:
+        print("Usage: python grasp_database.py gripper [FILE]")
+        exit(0)
+    from known_grippers import *
+    print(sys.argv)
+    g = GripperInfo.get(sys.argv[1])
+    if g is None:
+        print("Invalid gripper, valid names are",list(GripperInfo.all_grippers.keys()))
+        exit(1)
+    db = GraspDatabase(g)
+    if len(sys.argv) >= 3:
+        if sys.argv[2].endswith('.json'):
+            db.load(sys.argv[2])
+        else:
+            db.loadfolder(sys.argv[2])
+
+    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__),'../data'))
+    FIND_PATTERNS = [data_dir+"/objects/%s.obj",data_dir+"/objects/ycb-select/%s/textured.obj"]
+    def _find_object(name):
+        for pat in FIND_PATTERNS:
+            fn = pat%(name,)
+            if os.path.exists(fn):
+                return fn
+        return None
+
+    w = WorldModel()
+    if not w.readFile(g.klampt_model):
+        print("Can't load gripper robot model",g.klampt_model)
+        exit(1)
+    robot = w.robot(0)
+    for o in db.objects:
+        fn = _find_object(o)
+        if fn is None:
+            print("Can't find object",o,"in usual paths...")
+            continue
+        obj = w.makeRigidObject(o)
+        if not obj.loadFile(fn):
+            if not obj.geometry().loadFile(fn):
+                print("Couldn't load object",o,"from",fn)
+                exit(1)
+    if len(db.objects)==0:
+        print("Can't show anything, no objects")
+        print("Try adding some grasps to the database using grasp_edit.py")
+        exit(0)
+
+    cur_object = 0
+    cur_grasp = -1
+    shown_grasps = []
+    vis.add(db.objects[cur_object],w.rigidObject(cur_object))
+    def shift_object(amt):
+        global cur_object,cur_grasp,shown_grasps,db
+        vis.remove(db.objects[cur_object])
+        cur_object += amt
+        if cur_object >= len(db.objects):
+            cur_object = 0
+        elif cur_object < 0:
+            cur_object = len(db.objects)-1
+        vis.add(db.objects[cur_object],w.rigidObject(cur_object))
+        shift_grasp(None)
+
+    def shift_grasp(amt):
+        global cur_object,cur_grasp,shown_grasps,db
+        for i,grasp in shown_grasps:
+            grasp.remove_from_vis("grasp"+str(i))
+        shown_grasps = []
+        all_grasps = db.object_to_grasps[db.objects[cur_object]]
+        if amt == None:
+            cur_grasp = -1
+        else:
+            cur_grasp += amt
+            if cur_grasp >= len(all_grasps):
+                cur_grasp = -1
+            elif cur_grasp < -1:
+                cur_grasp = len(all_grasps)-1
+        if cur_grasp==-1:
+            for i,grasp in enumerate(all_grasps):
+                grasp.ik_constraint.robot = robot
+                grasp.add_to_vis("grasp"+str(i))
+                shown_grasps.append((i,grasp))
+            print("Showing",len(shown_grasps),"grasps")
+        else:
+            grasp = all_grasps[cur_grasp]
+            grasp.ik_constraint.robot = robot
+            grasp.add_to_vis("grasp"+str(cur_grasp))
+            Tbase = grasp.ik_constraint.closestMatch(*se3.identity())
+            g.add_to_vis(robot,animate=False,base_xform=Tbase)
+            robot.setConfig(grasp.set_finger_config(robot.getConfig()))
+            shown_grasps.append((cur_grasp,grasp))
+            if grasp.score is not None:
+                vis.addText("score","Score %.3f"%(grasp.score,),position=(10,10))
+            else:
+                vis.addText("score","",position=(10,10))
+
+    vis.addAction(lambda: shift_object(1),"Next object",'.')
+    vis.addAction(lambda: shift_object(-1),"Prev object",',')
+    vis.addAction(lambda: shift_grasp(1),"Next grasp",'=')
+    vis.addAction(lambda: shift_grasp(-1),"Prev grasp",'-')
+    vis.addAction(lambda: shift_grasp(None),"All grasps",'0')
+    vis.add("gripper",w.robot(0))
+    vis.run()

@@ -254,12 +254,11 @@ class GripperInfo:
                 robot.setConfig(q0)
             return res
 
-    def add_to_vis(self,robot=None,animate=True):
+    def add_to_vis(self,robot=None,animate=True,base_xform=None):
         """Adds the gripper to the klampt.vis scene."""
         from klampt import vis
         from klampt import WorldModel,Geometry3D,GeometricPrimitive
         from klampt.model.trajectory import Trajectory
-        base_xform = se3.identity()
         prefix = "gripper_"+self.name
         if robot is None and self.klampt_model is not None:
             w = WorldModel()
@@ -273,7 +272,14 @@ class GripperInfo:
         if robot is not None:
             assert self.base_link >= 0 and self.base_link < robot.numLinks()
             robot.link(self.base_link).appearance().setColor(1,0.75,0.5)
-            base_xform = robot.link(self.base_link).getTransform()
+            if base_xform is None:
+                base_xform = robot.link(self.base_link).getTransform()
+            else:
+                if robot.link(self.base_link).getParent() >= 0:
+                    print("Warning, setting base link transform for an attached gripper base")
+                #robot.link(self.base_link).setParent(-1)
+                robot.link(self.base_link).setParentTransform(*base_xform)
+                robot.setConfig(robot.getConfig())
             for l in self.finger_links:
                 assert l >= 0 and l < robot.numLinks()
                 robot.link(l).appearance().setColor(1,1,0.5)
