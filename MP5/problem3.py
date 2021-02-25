@@ -14,11 +14,11 @@ import grasp
 import grasp_database
 from known_grippers import *
 
-#PROBLEM = '3a'
+PROBLEM = '3a'
 #PROBLEM = '3b'
-PROBLEM = '3c'
+#PROBLEM = '3c'
 
-PHYSICS_SIMULATION = True
+PHYSICS_SIMULATION = False  #not implemented correctly yet
 
 if __name__ == '__main__':
     #load the robot / world file
