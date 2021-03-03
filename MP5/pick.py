@@ -78,7 +78,7 @@ def plan_pick_one(world,robot,object,gripper,grasp):
     #TODO: not a lot of collision checking going on either...
 
     qlift = qgrasp
-    return RobotTrajectory(robot,milestones=[qstart]+transit),RobotTrajectory(robot,milestones=[qpregrasp,qopen,qgrasp],RobotTrajectory(robot,milestones=[qgrasp,qlift])
+    return (RobotTrajectory(robot,milestones=[qstart]+transit),RobotTrajectory(robot,milestones=[qpregrasp,qopen,qgrasp],RobotTrajectory(robot,milestones=[qgrasp,qlift])
 
 
 def plan_pick_grasps(world,robot,object,gripper,grasps):
