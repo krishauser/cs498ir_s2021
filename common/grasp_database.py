@@ -188,26 +188,18 @@ class GraspDatabaseSampler(GraspSamplerBase):
             return 0
         return 1.0 - self._grasp_index/float(len(grasps))
 
-
-if __name__ == '__main__':
-    import sys
-    from klampt import WorldModel
-    from klampt import vis
-    if len(sys.argv) < 2:
-        print("Usage: python grasp_database.py gripper [FILE]")
-        exit(0)
-    from known_grippers import *
-    print(sys.argv)
-    g = GripperInfo.get(sys.argv[1])
+def browse_database(gripper,dbfile=None):
+    from known_grippers import GripperInfo
+    g = GripperInfo.get(gripper)
     if g is None:
         print("Invalid gripper, valid names are",list(GripperInfo.all_grippers.keys()))
         exit(1)
     db = GraspDatabase(g)
-    if len(sys.argv) >= 3:
-        if sys.argv[2].endswith('.json'):
-            db.load(sys.argv[2])
+    if dbfile is not None:
+        if dbfile.endswith('.json'):
+            db.load(dbfile)
         else:
-            db.loadfolder(sys.argv[2])
+            db.loadfolder(dbfile)
 
     data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__),'../data'))
     FIND_PATTERNS = [data_dir+"/objects/%s.obj",data_dir+"/objects/ycb-select/%s/textured.obj"]
@@ -228,59 +220,71 @@ if __name__ == '__main__':
         if fn is None:
             print("Can't find object",o,"in usual paths...")
             continue
-        obj = w.makeRigidObject(o)
-        if not obj.loadFile(fn):
-            if not obj.geometry().loadFile(fn):
-                print("Couldn't load object",o,"from",fn)
-                exit(1)
+        if w.numRigidObjects()==0:
+            obj = w.makeRigidObject(o)
+            if not obj.loadFile(fn):
+                if not obj.geometry().loadFile(fn):
+                    print("Couldn't load object",o,"from",fn)
+                    exit(1)
+            obj.setTransform(*se3.identity())
     if len(db.objects)==0:
         print("Can't show anything, no objects")
         print("Try adding some grasps to the database using grasp_edit.py")
         exit(0)
 
-    cur_object = 0
-    cur_grasp = -1
-    shown_grasps = []
-    vis.add(db.objects[cur_object],w.rigidObject(cur_object))
-    def shift_object(amt):
-        global cur_object,cur_grasp,shown_grasps,db
-        vis.remove(db.objects[cur_object])
-        cur_object += amt
-        if cur_object >= len(db.objects):
-            cur_object = 0
-        elif cur_object < 0:
-            cur_object = len(db.objects)-1
-        vis.add(db.objects[cur_object],w.rigidObject(cur_object))
+    data = dict()
+    data['cur_object'] = 0
+    data['cur_grasp'] = -1
+    data['shown_grasps'] = []
+    vis.add(db.objects[data['cur_object']],w.rigidObject(0))
+    def shift_object(amt,data=data):
+        vis.remove(db.objects[data['cur_object']])
+        data['cur_object'] += amt
+        if data['cur_object'] >= len(db.objects):
+            data['cur_object'] = 0
+        elif data['cur_object'] < 0:
+            data['cur_object'] = len(db.objects)-1
+        if data['cur_object'] >= w.numRigidObjects():
+            for i in range(w.numRigidObjects(),data['cur_object']+1):
+                o = db.objects[i]
+                fn = _find_object(o)
+                obj = w.makeRigidObject(o)
+                if not obj.loadFile(fn):
+                    if not obj.geometry().loadFile(fn):
+                        print("Couldn't load object",o,"from",fn)
+                        exit(1)
+                obj.setTransform(*se3.identity())
+        obj = w.rigidObject(data['cur_object'])
+        vis.add(db.objects[data['cur_object']],obj)
         shift_grasp(None)
 
-    def shift_grasp(amt):
-        global cur_object,cur_grasp,shown_grasps,db
-        for i,grasp in shown_grasps:
+    def shift_grasp(amt,data=data):
+        for i,grasp in data['shown_grasps']:
             grasp.remove_from_vis("grasp"+str(i))
-        shown_grasps = []
-        all_grasps = db.object_to_grasps[db.objects[cur_object]]
+        data['shown_grasps'] = []
+        all_grasps = db.object_to_grasps[db.objects[data['cur_object']]]
         if amt == None:
-            cur_grasp = -1
+            data['cur_grasp'] = -1
         else:
-            cur_grasp += amt
-            if cur_grasp >= len(all_grasps):
-                cur_grasp = -1
-            elif cur_grasp < -1:
-                cur_grasp = len(all_grasps)-1
-        if cur_grasp==-1:
+            data['cur_grasp'] += amt
+            if data['cur_grasp'] >= len(all_grasps):
+                data['cur_grasp'] = -1
+            elif data['cur_grasp'] < -1:
+                data['cur_grasp'] = len(all_grasps)-1
+        if data['cur_grasp']==-1:
             for i,grasp in enumerate(all_grasps):
                 grasp.ik_constraint.robot = robot
                 grasp.add_to_vis("grasp"+str(i))
-                shown_grasps.append((i,grasp))
-            print("Showing",len(shown_grasps),"grasps")
+                data['shown_grasps'].append((i,grasp))
+            print("Showing",len(data['shown_grasps']),"grasps")
         else:
-            grasp = all_grasps[cur_grasp]
+            grasp = all_grasps[data['cur_grasp']]
             grasp.ik_constraint.robot = robot
-            grasp.add_to_vis("grasp"+str(cur_grasp))
+            grasp.add_to_vis("grasp"+str(data['cur_grasp']))
             Tbase = grasp.ik_constraint.closestMatch(*se3.identity())
             g.add_to_vis(robot,animate=False,base_xform=Tbase)
             robot.setConfig(grasp.set_finger_config(robot.getConfig()))
-            shown_grasps.append((cur_grasp,grasp))
+            data['shown_grasps'].append((data['cur_grasp'],grasp))
             if grasp.score is not None:
                 vis.addText("score","Score %.3f"%(grasp.score,),position=(10,10))
             else:
@@ -293,3 +297,17 @@ if __name__ == '__main__':
     vis.addAction(lambda: shift_grasp(None),"All grasps",'0')
     vis.add("gripper",w.robot(0))
     vis.run()
+
+if __name__ == '__main__':
+    import sys
+    from klampt import WorldModel
+    from klampt import vis
+    if len(sys.argv) < 2:
+        print("Usage: python grasp_database.py gripper [FILE]")
+        exit(0)
+    print(sys.argv)
+    gripper = sys.argv[1]
+    dbfile = None
+    if len(sys.argv) >= 3:
+        dbfile = sys.argv[2]
+    browse_database(gripper,dbfile)
