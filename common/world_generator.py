@@ -142,11 +142,7 @@ def save_world(world,fn):
     print("Saving world to",fn)
     #annoying workaround: bug saving files on Windows 
     try:
-        os.mkdir("output")
-    except Exception:
-        pass
-    try:
-        os.mkdir(folder)
+        os.makedirs(folder)
     except Exception:
         pass
     for o in range(world.numRigidObjects()):
@@ -173,4 +169,3 @@ def save_world(world,fn):
                 replaced = contents.replace('\\','/')
                 with open(fn,'w') as f:
                     f.write(replaced)
-
