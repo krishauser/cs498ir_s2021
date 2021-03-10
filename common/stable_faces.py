@@ -1,5 +1,6 @@
 from klampt import RigidObjectModel
 from klampt.math import so3
+from klampt.io import numpy_convert
 import numpy as np
 from collections import deque
 from scipy.spatial import ConvexHull
@@ -130,4 +131,18 @@ def stable_faces(obj,com=None,stability_tol=0.0,merge_tol=0.0):
         if stable:
             output.append([verts[i] for i in face])
     return output
-        
+
+def debug_stable_faces(obj,faces):
+    from klampt import vis,Geometry3D,GeometricPrimitive
+    from klampt.math import se3
+    import random
+    vis.createWindow()
+    obj.setTransform(*se3.identity())
+    vis.add("object",obj)
+    for i,f in enumerate(faces):
+        gf = GeometricPrimitive()
+        gf.setPolygon(np.stack(f).flatten())
+        color = (1,0.5+0.5*random.random(),0.5+0.5*random.random(),0.5)
+        vis.add("face{}".format(i),Geometry3D(gf),color=color,hide_label=True)
+    vis.setWindowTitle("Stable faces")
+    vis.dialog()

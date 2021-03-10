@@ -6,6 +6,7 @@ from klampt import Geometry3D
 from klampt.model.create import primitives
 from klampt.model import collide
 import math
+import platform
 
 DEFAULT_OBJECT_MASS = 1
 DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),'../data'))
@@ -30,7 +31,7 @@ def make_ycb_object(objectname,world,textured=True):
         fn = os.path.join(YCB_DIR,objectname,'nontextured.ply')
 
     obj = world.makeRigidObject(objectname)
-    if not obj.geometry().loadFile(fn):
+    if not obj.geometry().loadFile(os.path.relpath(fn)):
         raise IOError("Unable to read geometry from file",fn)
     obj.setTransform(*se3.identity())
 
@@ -57,9 +58,10 @@ def make_primitive_object(world,typename,name=None):
     and places it in a default location (x,y)=(0,0) and resting on plane."""
     if name is None:
         name = typename
-    fn = "data/objects/"+typename+".obj"
+    fn = os.path.join(DATA_DIR,"/objects/"+typename+".obj")
     if not world.readFile(fn):
         raise IOError("Unable to read primitive from file",fn)
+    obj = world.rigidObject(world.numRigidObjects()-1)
     T = obj.getTransform()
     spacing = 0.006
     T = (T[0],vectorops.add(T[1],(-(bmin[0]+bmax[0])*0.5,-(bmin[1]+bmax[1])*0.5,-bmin[2]+spacing)))
@@ -133,3 +135,37 @@ def make_shelf(world,width,depth,height,wall_thickness=0.005,mass=float('inf')):
         shelf.appearance().setColor(0.2,0.6,0.3,1.0)
         return shelf
 
+def save_world(world,fn):
+    """Does what world.saveFile(fn) should do, but implements
+    a Workaround for a world saving bug in Windows..."""
+    folder = os.path.splitext(fn)[0]
+    print("Saving world to",fn)
+    #annoying workaround: bug saving files on Windows 
+    try:
+        os.makedirs(folder)
+    except Exception:
+        pass
+    for o in range(world.numRigidObjects()):
+        name = world.rigidObject(o).getName()
+        try:
+            os.mkdir(os.path.join(folder,name))
+        except Exception:
+            pass
+    for o in range(world.numTerrains()):
+        name = world.terrain(o).getName()
+        try:
+            os.mkdir(os.path.join(folder,name))
+        except Exception:
+            pass
+    world.saveFile(fn,folder+'/')
+    if platform.system()=='Windows':
+        #hack for windows path references
+        hack_exts = ['obj','env']
+        import glob
+        for ext in hack_exts:
+            for fn in glob.glob(folder+"/*."+ext):
+                with open(fn,'r') as f:
+                    contents = ''.join(f.readlines())
+                replaced = contents.replace('\\','/')
+                with open(fn,'w') as f:
+                    f.write(replaced)
