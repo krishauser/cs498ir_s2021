@@ -2,7 +2,7 @@ import os
 import json
 import random
 from klampt.math import vectorops,so3,se3
-from klampt import Geometry3D
+from klampt import Geometry3D,Mass
 from klampt.model.create import primitives
 from klampt.model import collide
 import math
@@ -64,6 +64,7 @@ def make_primitive_object(world,typename,name=None):
     obj = world.rigidObject(world.numRigidObjects()-1)
     T = obj.getTransform()
     spacing = 0.006
+    bmin,bmax = obj.geometry().getBB()
     T = (T[0],vectorops.add(T[1],(-(bmin[0]+bmax[0])*0.5,-(bmin[1]+bmax[1])*0.5,-bmin[2]+spacing)))
     obj.setTransform(*T)
     obj.appearance().setColor(0.2,0.5,0.7,1.0)
@@ -128,7 +129,7 @@ def make_shelf(world,width,depth,height,wall_thickness=0.005,mass=float('inf')):
         shelf.geometry().set(shelfgeom)
         shelf.appearance().setColor(0.2,0.6,0.3,1.0)
         shelf.setMass(bmass)
-        return box
+        return shelf
     else:
         shelf = world.makeTerrain("shelf")
         shelf.geometry().set(shelfgeom)

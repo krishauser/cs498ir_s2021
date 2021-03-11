@@ -161,6 +161,36 @@ class GripperInfo:
             raise ValueError("Can't get an opening configuration on a robot that does not define it")
         return vectorops.interpolate(self.closed_config,self.open_config,amount)
 
+    def config_to_opening(self,qfinger):
+        """Estimates far qfinger is from closed_config to open_config.
+        Only meaningful if qfinger is close to being along the straight
+        C-space line between the two.
+        """
+        if self.closed_config is None or self.open_config is None:
+            raise ValueError("Can't estimate opening width to")
+        assert len(qfinger) == len(self.closed_config)
+        b = vectorops.sub(qfinger,self.closed_config)
+        a = vectorops.sub(self.open_config,self.closed_config)
+        return min(1,max(0,vectorops.dot(a,b)/vectorops.normSquared(a)))
+
+    def width_to_opening(self,width):
+        """Returns an opening amount in the range 0 (closed) to 1 (open)
+        such that the fingers have a given width between them.
+        """
+        if self.maximum_span is None:
+            raise ValueError("Can't convert from width to opening without maximum_span")
+        minspan = self.minimum_span if self.minimum_span is not None else 0
+        return (width-minspan)/(self.maximum_span-minspan)
+    
+    def opening_to_width(self,opening):
+        """For a given opening amount in the range 0 (closed) to 1 (open)
+        returns an approximation to the width between the fingers.
+        """
+        if self.maximum_span is None:
+            raise ValueError("Can't convert from width to opening without maximum_span")
+        minspan = self.minimum_span if self.minimum_span is not None else 0
+        return minspan + opening*(self.maximum_span-minspan)
+
     def set_finger_config(self,qrobot,qfinger):
         """Given a full robot config qrobot, returns a config but with the finger
         degrees of freedom fixed to qfinger.

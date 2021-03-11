@@ -132,7 +132,7 @@ class GraspWithConfig(Grasp):
         data.
         """
         res = Grasp.toJson(self)
-        res['robot_config'] = robot_config
+        res['robot_config'] = self.robot_config
         return res
 
     def fromJson(self,jsonObj):
