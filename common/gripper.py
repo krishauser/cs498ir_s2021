@@ -161,6 +161,36 @@ class GripperInfo:
             raise ValueError("Can't get an opening configuration on a robot that does not define it")
         return vectorops.interpolate(self.closed_config,self.open_config,amount)
 
+    def config_to_opening(self,qfinger):
+        """Estimates far qfinger is from closed_config to open_config.
+        Only meaningful if qfinger is close to being along the straight
+        C-space line between the two.
+        """
+        if self.closed_config is None or self.open_config is None:
+            raise ValueError("Can't estimate opening width to")
+        assert len(qfinger) == len(self.closed_config)
+        b = vectorops.sub(qfinger,self.closed_config)
+        a = vectorops.sub(self.open_config,self.closed_config)
+        return min(1,max(0,vectorops.dot(a,b)/vectorops.normSquared(a)))
+
+    def width_to_opening(self,width):
+        """Returns an opening amount in the range 0 (closed) to 1 (open)
+        such that the fingers have a given width between them.
+        """
+        if self.maximum_span is None:
+            raise ValueError("Can't convert from width to opening without maximum_span")
+        minspan = self.minimum_span if self.minimum_span is not None else 0
+        return (width-minspan)/(self.maximum_span-minspan)
+    
+    def opening_to_width(self,opening):
+        """For a given opening amount in the range 0 (closed) to 1 (open)
+        returns an approximation to the width between the fingers.
+        """
+        if self.maximum_span is None:
+            raise ValueError("Can't convert from width to opening without maximum_span")
+        minspan = self.minimum_span if self.minimum_span is not None else 0
+        return minspan + opening*(self.maximum_span-minspan)
+
     def set_finger_config(self,qrobot,qfinger):
         """Given a full robot config qrobot, returns a config but with the finger
         degrees of freedom fixed to qfinger.
@@ -254,12 +284,11 @@ class GripperInfo:
                 robot.setConfig(q0)
             return res
 
-    def add_to_vis(self,robot=None,animate=True):
+    def add_to_vis(self,robot=None,animate=True,base_xform=None):
         """Adds the gripper to the klampt.vis scene."""
         from klampt import vis
         from klampt import WorldModel,Geometry3D,GeometricPrimitive
         from klampt.model.trajectory import Trajectory
-        base_xform = se3.identity()
         prefix = "gripper_"+self.name
         if robot is None and self.klampt_model is not None:
             w = WorldModel()
@@ -273,7 +302,14 @@ class GripperInfo:
         if robot is not None:
             assert self.base_link >= 0 and self.base_link < robot.numLinks()
             robot.link(self.base_link).appearance().setColor(1,0.75,0.5)
-            base_xform = robot.link(self.base_link).getTransform()
+            if base_xform is None:
+                base_xform = robot.link(self.base_link).getTransform()
+            else:
+                if robot.link(self.base_link).getParent() >= 0:
+                    print("Warning, setting base link transform for an attached gripper base")
+                #robot.link(self.base_link).setParent(-1)
+                robot.link(self.base_link).setParentTransform(*base_xform)
+                robot.setConfig(robot.getConfig())
             for l in self.finger_links:
                 assert l >= 0 and l < robot.numLinks()
                 robot.link(l).appearance().setColor(1,1,0.5)

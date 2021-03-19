@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<world>
+  <robot name="Kinova" file="../data/robots/kinova_with_robotiq_85.urdf" translation="0.0 0 0.6"/>
+  <!-- the pedestal -->
+  <terrain file="../data/terrains/cube.off" scale="0.3 0.3 0.59" translation="-0.15 -0.15 0.0">
+     <display color="0.2 0.2 0.2"/>
+  </terrain>
+  <rigidObject name="048_hammer" translation="0.5 0 0.635" rotateZ="0.6" >
+    <geometry file="../data/objects/ycb-select/048_hammer/textured.obj" />
+  </rigidObject>
+  <terrain name="pod" file="../data/objects/apc_pod.stl" rotateRPY="1.5708 0 1.5708" translation="0.7 -0.2 0.01">
+    <display color="0.3 0.3 0.3" texture="noise" />
+  </terrain>
+</world>

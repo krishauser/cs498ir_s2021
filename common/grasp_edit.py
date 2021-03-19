@@ -92,6 +92,7 @@ def grasp_edit_ui(gripper,object,grasp=None):
         vis.show()
 
     def loop_callback():
+        global base_xform
         xform = vis.getItemConfig("base_xform")
         base_xform = (xform[:9],xform[9:])
         vis.lock()
@@ -109,8 +110,6 @@ def grasp_edit_ui(gripper,object,grasp=None):
     #     time.sleep(0.02)
     # loop_cleanup()
 
-    xform = vis.getItemConfig("base_xform")
-    base_xform = (xform[:9],xform[9:])
     g = make_grasp()
     #restore RobotModel
     base_link.setParentTransform(*se3.mul(se3.inv(parent_xform),base_xform0))
@@ -119,17 +118,29 @@ def grasp_edit_ui(gripper,object,grasp=None):
 
 if __name__ == '__main__':
     import sys
-    from known_grippers import *
+    import os
     if len(sys.argv) < 3:
-        print("USAGE: python grasp_edit gripper_name OBJECT_FILE")
+        print("USAGE: python grasp_edit gripper_name OBJECT_FILE [grasp file]")
         exit(1)
+        
+    from known_grippers import *
     g = GripperInfo.get(sys.argv[1])
     w = WorldModel()
     res = w.readFile(sys.argv[2])
     if not res:
-        print("Unable to read object",sys.argv[2])
-        exit(1)
+        basename = os.path.splitext(os.path.basename(sys.argv[2]))[0]
+        obj = w.makeRigidObject(basename)
+        if not obj.loadFile(sys.argv[2]):
+            if not obj.geometry().loadFile(sys.argv[2]):
+                print("Unable to read object",sys.argv[2])
+                exit(1)
     obj = w.rigidObject(0)
-    g = grasp_edit_ui(g,obj)
+    grasp = None
+    if len(sys.argv) >= 4:
+        with open(sys.argv[3],'r') as f:
+            jsonobj = json.load(f)
+        grasp = Grasp()
+        grasp.fromJson(jsonobj)
+    grasp = grasp_edit_ui(g,obj,grasp)
     print("Resulting grasp:")
-    print(json.dumps(g.toJson(), indent=2))
+    print(json.dumps(grasp.toJson(), indent=2))
