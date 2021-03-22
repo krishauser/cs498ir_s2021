@@ -237,7 +237,7 @@
     <child link="EndEffector_Link" />
     <axis xyz="0 0 0" />
   </joint>
-  <klampt world_frame="world" defaultAccMax="4">
+  <klampt world_frame="world" default_acc_max="1.0">
     <noselfcollision group1="Base_Link Shoulder_Link" group2="HalfArm1_Link HalfArm2_Link ForeArm_Link SphericalWrist1_Link" />
     <noselfcollision group1="HalfArm1_Link HalfArm2_Link" group2="ForeArm_Link SphericalWrist1_Link" />
     <noselfcollision group1="HalfArm2_Link ForeArm_Link" group2="SphericalWrist1_Link SphericalWrist2_Link Bracelet_Link" />
