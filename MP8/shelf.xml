@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<world>
+  <terrain name="floor" file="../data/terrains/plane.env"/>
+  <terrain name="pod" file="pod.off">
+    <display color="0.3 0.3 0.3" texture="noise" />
+  </terrain>
+</world>
