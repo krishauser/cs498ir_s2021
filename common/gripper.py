@@ -54,7 +54,8 @@ class GripperInfo:
             can be individually actuated.
         type (str, optional): Specifies the type of gripper. Can be 'vacuum',
             'parallel', 'wrapping', or None (unknown)
-        center (list of 3 floats, optional): The "palm" of the gripper.
+        center (list of 3 floats, optional): A central point on the "palm" of
+            the gripper.
         primary_axis (list of 3 floats, optional): The local axis of the
             gripper that opposes the "typical" load.  (Unit vector in the
             opposite direction of the load)
