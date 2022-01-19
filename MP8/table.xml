@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<world>
+  <display background="0.400000 0.400000 1.000000 0.000000" />
+  <terrain name="plane" file="table/plane.env" >
+    <display faceColor="0.800000 0.600000 0.200000 1.000000" silhouette="0.002500 0.000000 0.000000 0.000000 1.000000"/>
+  </terrain>
+  <terrain name="table_top" file="table/table_top.env" >
+    <display faceColor="0.400000 0.300000 0.200000 1.000000" silhouette="0.002500 0.000000 0.000000 0.000000 1.000000"/>
+  </terrain>
+  <terrain name="table_leg_1" file="table/table_leg_1.env" >
+    <display faceColor="0.400000 0.300000 0.200000 1.000000" silhouette="0.002500 0.000000 0.000000 0.000000 1.000000"/>
+  </terrain>
+  <terrain name="table_leg_2" file="table/table_leg_2.env" >
+    <display faceColor="0.400000 0.300000 0.200000 1.000000" silhouette="0.002500 0.000000 0.000000 0.000000 1.000000"/>
+  </terrain>
+  <terrain name="table_leg_3" file="table/table_leg_3.env" >
+    <display faceColor="0.400000 0.300000 0.200000 1.000000" silhouette="0.002500 0.000000 0.000000 0.000000 1.000000"/>
+  </terrain>
+  <terrain name="table_leg_4" file="table/table_leg_4.env" >
+    <display faceColor="0.400000 0.300000 0.200000 1.000000" silhouette="0.002500 0.000000 0.000000 0.000000 1.000000"/>
+  </terrain>
+</world>

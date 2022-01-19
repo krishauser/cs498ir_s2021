@@ -1,0 +1,16 @@
+### Fixed nothing robot with ###
+TParent 1 0 0   0 1 0   0 0 1   0 0 0  
+parents -1
+axis 1 0 0
+jointtype p
+qMin 0
+qMax 0
+q 0 
+geometry   ""
+mass       1
+com 	0 0 0
+inertiadiag 0.1 0.1 0.1
+
+joint weld 0
+
+property sensors <sensors><CameraSensor name="rgbd_camera" link="-1" Tsensor="0 1 0  -1 0 0  0 0 1   0 0.1 0"  xres="640" yres="480" xfov="1.05" yfov="0.6" zmin="0.15" zmax="1.5" zresolution="0.01" zvarianceLinear="0.00001" /> </sensors>
